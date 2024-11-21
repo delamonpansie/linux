@@ -132,7 +132,9 @@ void ath11k_debugfs_fw_stats_process(struct ath11k *ar, struct ath11k_fw_stats *
 				total_vdevs_started += ar->num_started_vdevs;
 		}
 
-		is_end = ((++num_vdev) == total_vdevs_started);
+		is_end = ((++num_vdev) >= total_vdevs_started);
+		if (num_vdev > total_vdevs_started)
+			ath11k_warn(ab, "spurious vdev stats");
 
 		list_splice_tail_init(&stats->vdevs,
 				      &ar->fw_stats.vdevs);
@@ -152,7 +154,9 @@ void ath11k_debugfs_fw_stats_process(struct ath11k *ar, struct ath11k_fw_stats *
 		/* Mark end until we reached the count of all started VDEVs
 		 * within the PDEV
 		 */
-		is_end = ((++num_bcn) == ar->num_started_vdevs);
+		is_end = ((++num_bcn) >= ar->num_started_vdevs);
+		if (num_bcn > ar->num_started_vdevs)
+			ath11k_warn(ab, "spurious bcn stats");
 
 		list_splice_tail_init(&stats->bcn,
 				      &ar->fw_stats.bcn);

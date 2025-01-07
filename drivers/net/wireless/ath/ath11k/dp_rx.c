@@ -31,8 +31,23 @@ static inline
 enum hal_encrypt_type ath11k_dp_rx_h_mpdu_start_enctype(struct ath11k_base *ab,
 							struct hal_rx_desc *desc)
 {
-	if (!ab->hw_params.hw_ops->rx_desc_encrypt_valid(desc))
+	static atomic_t invalid_count;
+
+	if (!ab->hw_params.hw_ops->rx_desc_encrypt_valid(desc)) {
+		// Sometimes FW gets in bad state and performs poorly.
+		// The only indication of that that I was able to find
+		// are packets with invalid encryption descriptor. If we
+		// have too many of those, it is likely that FW is
+		// stuck and ressetting it will bring things to
+		// normal.
+		int count = atomic_inc_return(&invalid_count);
+		printk("ath11k: invalid rx desc encrypt count %d\n", count);
+		if (count > 5) {
+			queue_work(ab->workqueue_aux, &ab->reset_work);
+			atomic_set(&invalid_count, 0);
+		}
 		return HAL_ENCRYPT_TYPE_OPEN;
+	}
 
 	return ab->hw_params.hw_ops->rx_desc_get_encrypt_type(desc);
 }
